@@ -1,0 +1,17 @@
+/dist/
+/build/
+/input/
+/01_ROM/
+__pycache__/
+*.pyc
+.venv/
+*.psarc
+*.zip
+*.loc
+*.loc2
+*.fnt
+*.tga
+*.dds
+*.nsz
+*.mp4
+
