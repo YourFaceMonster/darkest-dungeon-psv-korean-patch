@@ -4,21 +4,30 @@ from __future__ import annotations
 import argparse
 import re
 import tempfile
-import zipfile
 from pathlib import Path
 
+from PIL import Image, ImageFilter
+
 from convert import Psarc, convert_table
-from gxt import encode
+from gxt import decode_alpha, encode
 from pack_psarc import build_archive
 
 ROOT = Path(__file__).resolve().parent
 TITLE_ID = "PCSG01154"
+VERSION = "0.9.1"
 FONT_SPACE_WIDTHS = {
     "korean_ubuntu.fnt": 7,
     "korean_ubuntu_m.fnt": 8,
     "korean_dwarven_axe_l.fnt": 12,
     "korean_dwarven_axe_m.fnt": 8,
     "korean_popup.fnt": 15,
+}
+VITA_FONT_DESCRIPTORS = {
+    "korean_ubuntu.fnt": "ubuntu.fnt",
+    "korean_ubuntu_m.fnt": "ubuntu_m.fnt",
+    "korean_dwarven_axe_l.fnt": "dwarvenaxe-l.fnt",
+    "korean_dwarven_axe_m.fnt": "dwarvenaxe-m.fnt",
+    "korean_popup.fnt": "popup.fnt",
 }
 BASE_FONTS = {
     "ubuntu_small": "korean_ubuntu.fnt",
@@ -30,25 +39,144 @@ BASE_FONTS = {
 }
 
 
-def add_space(descriptor: bytes, advance: int) -> bytes:
-    if re.search(rb"(?m)^char id=32 ", descriptor):
-        raise ValueError("The source descriptor already has a space glyph")
-    match = re.search(rb"(?m)^chars count=(\d+)(\r?\n)", descriptor)
-    if match is None:
-        raise ValueError("BMFont character count was not found")
-    newline = match.group(2)
-    glyph = (
-        f"char id=32 x=1023 y=1023 width=1 height=1 "
-        f"xoffset=0 yoffset=0 xadvance={advance} page=0 chnl=15"
-    ).encode("ascii")
-    replacement = (
-        b"chars count="
-        + str(int(match.group(1)) + 1).encode("ascii")
-        + newline
-        + glyph
-        + newline
+def fields(line: bytes) -> dict[bytes, int]:
+    return {
+        key: int(value)
+        for key, value in re.findall(rb"(\w+)=(-?\d+)", line)
+    }
+
+
+def replace_field(line: bytes, key: bytes, value: int) -> bytes:
+    updated, count = re.subn(
+        rb"(?<!\w)" + key + rb"=-?\d+",
+        key + b"=" + str(value).encode("ascii"),
+        line,
+        count=1,
     )
-    return descriptor[: match.start()] + replacement + descriptor[match.end() :]
+    if count != 1:
+        raise ValueError(f"Missing BMFont field: {key.decode('ascii')}")
+    return updated
+
+
+def merge_vita_ascii(
+    vita: Psarc, switch_root: Path, fonts: Path, name: str, space_width: int
+) -> None:
+    """Put Vita ASCII glyphs in unused space of a Korean atlas page."""
+    source_lines = vita.read(
+        "fonts/" + VITA_FONT_DESCRIPTORS[name]
+    ).splitlines()
+    source_glyphs = {
+        fields(line)[b"id"]: line
+        for line in source_lines
+        if line.startswith(b"char id=")
+    }
+    source_pages = [
+        re.search(rb'file="([^"]+)"', line).group(1).decode("ascii")
+        for line in source_lines
+        if line.startswith(b"page id=")
+    ]
+    if len(source_pages) != 1:
+        raise ValueError(f"Expected one Vita atlas page for {name}")
+    source_alpha = decode_alpha(vita.read("fonts/" + source_pages[0]))
+
+    descriptor = (switch_root / "fonts" / name).read_bytes()
+    lines = descriptor.splitlines(keepends=True)
+    pages = [
+        re.search(rb'file="([^"]+)"', line).group(1).decode("ascii")
+        for line in lines
+        if line.startswith(b"page id=")
+    ]
+    if not pages:
+        raise ValueError(f"No Korean atlas pages for {name}")
+    target_page = len(pages) - 1
+    target_name = pages[target_page]
+    target_glyphs = [
+        fields(line)
+        for line in lines
+        if line.startswith(b"char id=")
+    ]
+    existing_ids = {glyph[b"id"] for glyph in target_glyphs}
+    y = max(
+        glyph[b"y"] + glyph[b"height"]
+        for glyph in target_glyphs
+        if glyph[b"page"] == target_page
+    ) + 2
+    x = 1
+    row_height = 0
+    newline = b"\r\n" if b"\r\n" in descriptor else b"\n"
+    with Image.open(switch_root / "fonts" / target_name) as image:
+        target_alpha = (
+            image.getchannel("A")
+            if "A" in image.getbands()
+            else image.convert("L")
+        )
+    if target_alpha.size != (1024, 1024):
+        raise ValueError(f"Unexpected Korean atlas dimensions for {name}")
+    added = []
+    for char_id in range(32, 127):
+        if char_id in existing_ids:
+            continue
+        original = source_glyphs.get(char_id)
+        if original is None:
+            raise ValueError(f"Vita font {name} is missing ASCII {char_id}")
+        glyph = fields(original)
+        width, height = glyph[b"width"], glyph[b"height"]
+        if x + width + 2 > 1024:
+            x, y, row_height = 1, y + row_height, 0
+        if y + height + 2 > 1024:
+            raise ValueError(f"No atlas space for ASCII in {name}")
+        crop = source_alpha.crop(
+            (
+                glyph[b"x"],
+                glyph[b"y"],
+                glyph[b"x"] + width,
+                glyph[b"y"] + height,
+            )
+        )
+        target_alpha.paste(crop, (x, y))
+        updated = replace_field(original, b"x", x)
+        updated = replace_field(updated, b"y", y)
+        updated = replace_field(updated, b"page", target_page)
+        if char_id == 32:
+            updated = replace_field(updated, b"xadvance", space_width)
+        added.append(updated.rstrip(b"\r\n") + newline)
+        x += width + 2
+        row_height = max(row_height, height + 2)
+
+    count_index = next(
+        i for i, line in enumerate(lines) if line.startswith(b"chars count=")
+    )
+    lines[count_index] = replace_field(
+        lines[count_index], b"count", len(target_glyphs) + len(added)
+    )
+    # The game's BMFont lookup expects character IDs in ascending order.
+    # Printable ASCII precedes every Korean extension glyph.
+    if [glyph[b"id"] for glyph in target_glyphs] != sorted(existing_ids):
+        raise ValueError(f"Korean BMFont glyphs are not sorted: {name}")
+    insert_at = count_index + 1
+    lines[insert_at:insert_at] = added
+    (fonts / name).write_bytes(b"".join(lines))
+
+    thin_popup = name == "korean_popup.fnt"
+    for atlas_name in pages:
+        destination = fonts / atlas_name
+        if atlas_name == target_name:
+            with tempfile.TemporaryDirectory(prefix="atlas-", dir=fonts) as temp:
+                edited = Path(temp) / atlas_name
+                if thin_popup:
+                    target_alpha = target_alpha.filter(ImageFilter.MinFilter(5))
+                target_alpha.save(edited)
+                encode(edited, destination)
+        elif thin_popup:
+            # The Switch popup glyphs include a four-pixel solid outline in
+            # the alpha bitmap. It closes counters after Vita downsamples it.
+            with tempfile.TemporaryDirectory(prefix="atlas-", dir=fonts) as temp:
+                edited = Path(temp) / atlas_name
+                with Image.open(switch_root / "fonts" / atlas_name) as image:
+                    image.getchannel("A").filter(ImageFilter.MinFilter(5)).save(edited)
+                encode(edited, destination)
+        else:
+            encode(switch_root / "fonts" / atlas_name, destination)
 
 
 def make_font_config(vita: Psarc, switch_root: Path) -> bytes:
@@ -89,7 +217,56 @@ def make_font_config(vita: Psarc, switch_root: Path) -> bytes:
     ]
     if len(overrides) != 6:
         raise ValueError("Expected six Korean font overrides in the Switch update")
-    return ("\r\n".join(lines + [""] + overrides) + "\r\n").encode("utf-8")
+    last_japanese = max(
+        i for i, line in enumerate(lines)
+        if line.startswith('font_language_override: .language "japanese"')
+    )
+    lines.insert(last_japanese + 1, "")
+    return ("\r\n".join(lines + overrides) + "\r\n").encode("utf-8")
+
+
+def make_combat_colours(vita: Psarc) -> bytes:
+    """Give floating combat text a light fill and a dark, readable edge."""
+    original = vita.read("colours/base.colours.darkest")
+    pattern = re.compile(
+        rb'(?m)^(colour:\s+\.id "(pop_text_[^"]+)"\s+\.rgba )([^\r\n]+)'
+    )
+    colours = {match.group(2).decode("ascii"): match.group(3) for match in pattern.finditer(original)}
+    updates: dict[str, bytes] = {}
+
+    # The Vita palette draws several status messages as black letters with
+    # pale outlines. On the dark battle scene their interiors disappear.
+    for name, colour in colours.items():
+        if not name.startswith("pop_text_outline_") and colour == b"#000000":
+            updates[name] = b"#fff1d6"
+            outline = "pop_text_outline_" + name.removeprefix("pop_text_")
+            if outline not in colours:
+                raise ValueError(f"Missing combat text outline: {outline}")
+            updates[outline] = b"#241710"
+
+    # Damage numerals overlap a red blood effect. A pale red fill keeps their
+    # meaning while making their shapes distinguishable from the effect.
+    for name in ("damage", "bleed", "tagged", "riposte", "no_damage", "death_avoided"):
+        fill = "pop_text_" + name
+        outline = "pop_text_outline_" + name
+        if fill not in colours or outline not in colours:
+            raise ValueError(f"Missing combat text colour: {name}")
+        updates[fill] = b"#ffc3a4"
+        updates[outline] = b"#260c08"
+
+    seen: set[str] = set()
+
+    def replace(match: re.Match[bytes]) -> bytes:
+        name = match.group(2).decode("ascii")
+        if name not in updates:
+            return match.group(0)
+        seen.add(name)
+        return match.group(1) + updates[name]
+
+    edited = pattern.sub(replace, original)
+    if seen != updates.keys():
+        raise ValueError(f"Combat colours not found: {sorted(updates.keys() - seen)}")
+    return edited
 
 
 def main() -> None:
@@ -132,26 +309,16 @@ def main() -> None:
             print(f"{destination}: {total} keys, {dict(counts)}", flush=True)
 
         (fonts / "fonts.darkest").write_bytes(make_font_config(vita, switch_root))
+        colours = overlay / "colours" / "base.colours.darkest"
+        colours.parent.mkdir(parents=True)
+        colours.write_bytes(make_combat_colours(vita))
         for name, advance in FONT_SPACE_WIDTHS.items():
-            source = switch_root / "fonts" / name
-            descriptor = add_space(source.read_bytes(), advance)
-            (fonts / name).write_bytes(descriptor)
-            for atlas in re.findall(rb'^page id=\d+ file="([^"]+)"', descriptor, re.M):
-                atlas_name = atlas.decode("ascii")
-                encode(switch_root / "fonts" / atlas_name, fonts / atlas_name)
+            merge_vita_ascii(vita, switch_root, fonts, name, advance)
 
-        archive = Path(temp) / "content.psarc"
+        archive = output / f"v{VERSION}" / "rePatch" / TITLE_ID / "content.psarc"
         build_archive(vita_path, overlay, archive)
-        package = output / f"DarkestDungeon_Korean_rePatch_{TITLE_ID}.zip"
-        with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_STORED) as zipped:
-            zipped.write(archive, f"rePatch/{TITLE_ID}/content.psarc")
-            zipped.writestr(
-                "README.txt",
-                "Extract this ZIP to ux0:.\n",
-            )
-    print(f"Created: {package}", flush=True)
+    print(f"Created: {archive}", flush=True)
 
 
 if __name__ == "__main__":
     main()
-

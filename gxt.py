@@ -33,6 +33,36 @@ def swizzle_bc3(linear: bytes, width: int, height: int) -> bytes:
     return bytes(result)
 
 
+def decode_alpha(data: bytes) -> Image.Image:
+    """Decode the first mip of a Vita BC3 GXT atlas to an alpha image."""
+    if data[:4] != b"GXT\0":
+        raise ValueError("Not a GXT texture")
+    offset, _, _, _, _, texture_type, width, height, _ = struct.unpack_from(
+        "<6IHHB3x", data, 32
+    )
+    if texture_type != 0x87000000 or width % 4 or height % 4:
+        raise ValueError("Unsupported Vita font texture")
+    blocks_w, blocks_h = width // 4, height // 4
+    if min(blocks_w, blocks_h) & (min(blocks_w, blocks_h) - 1):
+        raise ValueError("Expected power-of-two block dimensions")
+    bits = min(blocks_w.bit_length(), blocks_h.bit_length()) - 1
+    mask = (1 << (2 * bits)) - 1
+    linear = bytearray(blocks_w * blocks_h * 16)
+    for index in range(blocks_w * blocks_h):
+        low = index & mask
+        high = index >> (2 * bits)
+        x = compact(low >> 1) | (high << bits if blocks_w > blocks_h else 0)
+        y = compact(low) | (high << bits if blocks_h > blocks_w else 0)
+        start = offset + index * 16
+        target = (y * blocks_w + x) * 16
+        linear[target : target + 16] = data[start : start + 16]
+
+    buffer = io.BytesIO()
+    Image.new("RGBA", (width, height)).save(buffer, format="DDS", pixel_format="DXT5")
+    dds = buffer.getvalue()[:128] + linear
+    return Image.open(io.BytesIO(dds)).convert("RGBA").getchannel("A")
+
+
 def encode(source: Path, destination: Path) -> None:
     with Image.open(source) as image:
         if image.size != (1024, 1024):
@@ -78,4 +108,3 @@ def encode(source: Path, destination: Path) -> None:
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(header + texture + pixels)
-

@@ -1,4 +1,4 @@
-# Darkest Dungeon PS Vita 한글패치 — rePatch 실기 확인판
+# Darkest Dungeon PS Vita 한글패치 v0.9.1
 
 ## 게임 및 패치 정보
 
@@ -8,16 +8,17 @@
 | 플랫폼 | PlayStation Vita |
 | 패치 대상 | **PCSG01154** |
 | 설치 방식 | rePatch |
+| 현재 버전 | **0.9.1** |
 
 ## 한글패치 소개
 
 PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보유한 Nintendo Switch판 업데이트의 한국어 데이터와 글꼴을 PS Vita 데이터 형식에 맞게 변환했습니다.
 
-실기에서 한글 표시와 띄어쓰기를 확인했습니다. 튜토리얼 설명처럼 작은 글자는 다소 흐릿하게 보일 수 있으며, 전체 게임 진행과 모든 화면을 확인한 상태는 아닙니다.
+실기에서 한글 표시와 띄어쓰기, 전투 숫자 및 상태 문구 표시를 확인했습니다. v0.9.1에서는 전투 표시의 색 대비를 높이고 글자 획을 얇게 조정했습니다. 마지막 획 조정은 아직 실기 확인 전입니다. 튜토리얼 설명처럼 작은 글자는 다소 흐릿하게 보일 수 있으며, 전체 게임 진행과 모든 화면을 확인한 상태는 아닙니다.
 
 ## 다운로드
 
-배포할 때 이 저장소의 **Releases**에 `DarkestDungeon_Korean_rePatch_PCSG01154.zip`을 첨부합니다. ZIP 파일은 크기 때문에 Git 저장소에 직접 넣지 않습니다.
+빌드 결과는 `dist/v0.9.1/rePatch/PCSG01154/content.psarc`입니다. 압축하지 않은 `rePatch` 폴더를 PS Vita에 바로 복사할 수 있습니다. 게임 데이터가 포함된 결과물은 Git 저장소에 넣지 않습니다.
 
 ## 설치 방법
 
@@ -25,15 +26,14 @@ PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보�
 
 1. 게임을 완전히 종료합니다.
 2. 기존 `ux0:rePatch/PCSG01154` 폴더가 있다면 백업합니다.
-3. 배포 ZIP을 풀고 안의 `rePatch` 폴더를 PS Vita의 `ux0:` 최상위에 복사합니다.
+3. `dist/v0.9.1/rePatch` 폴더를 PS Vita의 `ux0:` 최상위에 복사합니다.
 4. `ux0:rePatch/PCSG01154/content.psarc`가 있는지 확인합니다.
 5. 게임을 실행합니다.
-
-ZIP 안의 `README.txt`에도 간단한 설치 안내가 있습니다.
 
 ## 실기 확인 및 알려진 문제
 
 - 한국어 글자 표시와 띄어쓰기를 확인했습니다.
+- 전투 숫자와 상태 문구가 나타나는 것은 확인했습니다. v0.9.1의 획 조정 결과는 실기 확인이 필요합니다.
 - 튜토리얼 팝업 등 일부 작은 설명 글자는 선명도가 떨어질 수 있습니다.
 - 전체 플레이와 모든 DLC의 호환성은 아직 확인하지 않았습니다.
 
@@ -54,7 +54,7 @@ python -m pip install -r requirements.txt
 python build_patch.py --vita "D:\path\content.psarc" --switch "D:\path\romfs"
 ```
 
-출력 경로: `dist/DarkestDungeon_Korean_rePatch_PCSG01154.zip`
+출력 경로: `dist/v0.9.1/rePatch/PCSG01154/content.psarc`
 
 ## 제작 및 출처
 
@@ -64,5 +64,4 @@ python build_patch.py --vita "D:\path\content.psarc" --switch "D:\path\romfs"
 - Nintendo Switch판 한국어 데이터와 글꼴 — 사용자가 보유한 게임 업데이트에서 추출
 
 이 저장소는 비공식 팬 패치 제작 자료입니다. 게임 및 번역 자료에 임의의 오픈소스 라이선스를 부여하지 않습니다.
-
 
