@@ -18,7 +18,7 @@ PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보�
 
 ## 다운로드
 
-빌드 결과는 `dist/v0.9.1/rePatch/PCSG01154/content.psarc`입니다. 압축하지 않은 `rePatch` 폴더를 PS Vita에 바로 복사할 수 있습니다. 게임 데이터가 포함된 결과물은 Git 저장소에 넣지 않습니다.
+[v0.9.1 릴리스](https://github.com/YourFaceMonster/darkest-dungeon-psv-korean-patch/releases/tag/v0.9.1)의 `content.psarc`를 받으세요. 압축 해제 없이 바로 복사할 수 있습니다. 직접 빌드하면 `dist/v0.9.1/rePatch/PCSG01154/content.psarc`가 생성됩니다. 게임 데이터가 포함된 결과물은 Git 저장소에 넣지 않습니다.
 
 ## 설치 방법
 
@@ -26,7 +26,7 @@ PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보�
 
 1. 게임을 완전히 종료합니다.
 2. 기존 `ux0:rePatch/PCSG01154` 폴더가 있다면 백업합니다.
-3. `dist/v0.9.1/rePatch` 폴더를 PS Vita의 `ux0:` 최상위에 복사합니다.
+3. 받은 `content.psarc`를 PS Vita의 `ux0:rePatch/PCSG01154/` 폴더에 복사합니다. 직접 빌드했다면 `dist/v0.9.1/rePatch` 폴더를 `ux0:` 최상위에 복사해도 됩니다.
 4. `ux0:rePatch/PCSG01154/content.psarc`가 있는지 확인합니다.
 5. 게임을 실행합니다.
 
