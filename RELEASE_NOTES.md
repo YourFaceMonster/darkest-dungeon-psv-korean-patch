@@ -10,7 +10,7 @@ PCSG01154용 rePatch 한국어 패치입니다.
 
 ## 설치
 
-1. 릴리스의 `patch_sources_v0.9.1.tar`, `apply_patch_data.py`, `pack_psarc.py`, `convert.py`를 PC에서 같은 폴더에 둡니다. TAR은 직접 풀 필요가 없습니다.
+1. 릴리스의 `patch_tools_v0.9.1.zip`을 PC의 폴더에 풀고, 같은 폴더에 `patch_sources_v0.9.1.tar`를 둡니다. TAR은 직접 풀 필요가 없습니다.
 2. 본인 Vita판 PCSG01154의 원본 `content.psarc`를 준비하고 `python apply_patch_data.py --vita "D:\path\content.psarc"`를 실행합니다. Switch 원본은 필요하지 않습니다.
 3. 생성된 `dist/v0.9.1/rePatch` 폴더를 Vita의 `ux0:`에 복사합니다. 기존 `ux0:rePatch/PCSG01154`가 있다면 먼저 백업합니다.
 4. `ux0:rePatch/PCSG01154/content.psarc`가 있는지 확인한 뒤 게임을 실행합니다.
