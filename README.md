@@ -18,13 +18,13 @@ PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보�
 
 ## 다운로드
 
-[v0.9.1 릴리스](https://github.com/YourFaceMonster/darkest-dungeon-psv-korean-patch/releases/tag/v0.9.1)에서 `patch_sources_v0.9.1.tar`, `apply_patch_data.py`, `pack_psarc.py`, `convert.py` 네 파일을 받으세요. 변경 파일 27개만 담은 TAR은 무압축이며 약 29MB입니다. 본인이 보유한 Vita 원본 `content.psarc`를 사용해 PC에서 설치 파일을 만듭니다. 이 방법에는 Switch 원본이 필요하지 않습니다.
+[v0.9.1 릴리스](https://github.com/YourFaceMonster/darkest-dungeon-psv-korean-patch/releases/tag/v0.9.1)에서 `patch_sources_v0.9.1.tar`와 `patch_tools_v0.9.1.zip` 두 파일을 받으세요. 변경 파일 27개만 담은 TAR은 무압축이며 약 29MB입니다. 본인이 보유한 Vita 원본 `content.psarc`를 사용해 PC에서 설치 파일을 만듭니다. 이 방법에는 Switch 원본이 필요하지 않습니다.
 
 ## 설치 방법
 
 대상 타이틀 ID는 **PCSG01154**이며, 기기에 rePatch가 활성화되어 있어야 합니다. PC에는 Python 3.10 이상이 필요합니다.
 
-1. 릴리스의 네 파일을 PC의 같은 폴더에 둡니다. TAR을 직접 풀 필요는 없습니다.
+1. `patch_tools_v0.9.1.zip`을 PC의 폴더에 풀고, 같은 폴더에 `patch_sources_v0.9.1.tar`를 둡니다. TAR을 직접 풀 필요는 없습니다.
 2. PC에서 본인 Vita판의 원본 `content.psarc`를 준비합니다. 재조립 도구는 이 프로젝트에서 사용한 PCSG01154 원본의 SHA-256을 확인합니다.
 3. 해당 폴더에서 다음 명령을 실행합니다.
 
