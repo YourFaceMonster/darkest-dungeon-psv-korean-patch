@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import io
+import json
 import re
+import tarfile
 import tempfile
 from pathlib import Path
 
@@ -15,6 +19,7 @@ from pack_psarc import build_archive
 ROOT = Path(__file__).resolve().parent
 TITLE_ID = "PCSG01154"
 VERSION = "0.9.1"
+SOURCE_BUNDLE = f"patch_sources_v{VERSION}.tar"
 FONT_SPACE_WIDTHS = {
     "korean_ubuntu.fnt": 7,
     "korean_ubuntu_m.fnt": 8,
@@ -269,6 +274,42 @@ def make_combat_colours(vita: Psarc) -> bytes:
     return edited
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def write_source_bundle(overlay: Path, vita_path: Path, destination: Path) -> None:
+    """Store only changed PSARC entries; the user's Vita archive supplies the rest."""
+    files = {
+        path.relative_to(overlay).as_posix(): path.read_bytes()
+        for path in overlay.rglob("*")
+        if path.is_file()
+    }
+    manifest = {
+        "version": VERSION,
+        "title_id": TITLE_ID,
+        "base_psarc_sha256": file_sha256(vita_path),
+        "files": {
+            name: {"size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            for name, data in sorted(files.items())
+        },
+    }
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(destination, "w", format=tarfile.USTAR_FORMAT) as archive:
+        entries = [("manifest.json", json.dumps(manifest, indent=2).encode("utf-8"))]
+        entries += [(f"overlay/{name}", data) for name, data in sorted(files.items())]
+        for name, data in entries:
+            entry = tarfile.TarInfo(name)
+            entry.size = len(data)
+            entry.mode = 0o644
+            archive.addfile(entry, io.BytesIO(data))
+    print(f"Source bundle: {destination}", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vita", required=True, type=Path, help="Vita content.psarc")
@@ -315,6 +356,7 @@ def main() -> None:
         for name, advance in FONT_SPACE_WIDTHS.items():
             merge_vita_ascii(vita, switch_root, fonts, name, advance)
 
+        write_source_bundle(overlay, vita_path, output / f"v{VERSION}" / SOURCE_BUNDLE)
         archive = output / f"v{VERSION}" / "rePatch" / TITLE_ID / "content.psarc"
         build_archive(vita_path, overlay, archive)
     print(f"Created: {archive}", flush=True)

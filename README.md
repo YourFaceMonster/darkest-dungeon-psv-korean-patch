@@ -18,17 +18,22 @@ PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보�
 
 ## 다운로드
 
-[v0.9.1 릴리스](https://github.com/YourFaceMonster/darkest-dungeon-psv-korean-patch/releases/tag/v0.9.1)의 `content.psarc`를 받으세요. 압축 해제 없이 바로 복사할 수 있습니다. 직접 빌드하면 `dist/v0.9.1/rePatch/PCSG01154/content.psarc`가 생성됩니다. 게임 데이터가 포함된 결과물은 Git 저장소에 넣지 않습니다.
+[v0.9.1 릴리스](https://github.com/YourFaceMonster/darkest-dungeon-psv-korean-patch/releases/tag/v0.9.1)에서 `patch_sources_v0.9.1.tar`를 받으세요. 실제 변경 파일 27개만 담은 무압축 묶음이며 약 29MB입니다. Git 저장소에는 재조립 도구가 있습니다. 본인이 보유한 Vita 원본 `content.psarc`를 사용해 PC에서 설치 파일을 만듭니다. 이 방법에는 Switch 원본이 필요하지 않습니다.
 
 ## 설치 방법
 
-대상 타이틀 ID는 **PCSG01154**이며, 기기에 rePatch가 활성화되어 있어야 합니다.
+대상 타이틀 ID는 **PCSG01154**이며, 기기에 rePatch가 활성화되어 있어야 합니다. PC에는 Python 3.10 이상과 이 저장소의 소스 코드가 필요합니다.
 
-1. 게임을 완전히 종료합니다.
-2. 기존 `ux0:rePatch/PCSG01154` 폴더가 있다면 백업합니다.
-3. 받은 `content.psarc`를 PS Vita의 `ux0:rePatch/PCSG01154/` 폴더에 복사합니다. 직접 빌드했다면 `dist/v0.9.1/rePatch` 폴더를 `ux0:` 최상위에 복사해도 됩니다.
-4. `ux0:rePatch/PCSG01154/content.psarc`가 있는지 확인합니다.
-5. 게임을 실행합니다.
+1. 저장소를 내려받고 `patch_sources_v0.9.1.tar`를 `apply_patch_data.py`와 같은 폴더에 둡니다. TAR을 직접 풀 필요는 없습니다.
+2. PC에서 본인 Vita판의 원본 `content.psarc`를 준비합니다. 재조립 도구는 이 프로젝트에서 사용한 PCSG01154 원본의 SHA-256을 확인합니다.
+3. 해당 폴더에서 다음 명령을 실행합니다.
+
+   ```powershell
+   python apply_patch_data.py --vita "D:\path\content.psarc"
+   ```
+
+4. 생성된 `dist/v0.9.1/rePatch` 폴더를 PS Vita의 `ux0:` 최상위에 복사합니다. 기존 `ux0:rePatch/PCSG01154` 폴더가 있다면 먼저 백업합니다.
+5. `ux0:rePatch/PCSG01154/content.psarc`가 있는지 확인하고 게임을 실행합니다.
 
 ## 실기 확인 및 알려진 문제
 
@@ -45,7 +50,7 @@ PCSG01154에 한국어를 적용한 비공식 패치입니다. 사용자가 보�
 
 ## 직접 빌드하기
 
-이 저장소에는 게임 원본과 Switch판 한국어 데이터가 포함되지 않습니다. 본인이 보유한 PS Vita판 `content.psarc`와 Nintendo Switch 업데이트에서 추출한 `romfs`가 필요합니다. Switch 입력 자료는 약 70MB입니다. `romfs`에는 `localization/koreana.loc2`와 `fonts/korean_ubuntu.fnt`가 있어야 합니다.
+릴리스의 소스 묶음 대신 처음부터 변환할 때만 이 절차를 사용합니다. 본인이 보유한 PS Vita판 `content.psarc`와 Nintendo Switch 업데이트에서 추출한 `romfs`가 필요합니다. `romfs`에는 `localization/koreana.loc2`와 `fonts/korean_ubuntu.fnt`가 있어야 합니다.
 
 Python 3.10 이상에서:
 
@@ -54,7 +59,7 @@ python -m pip install -r requirements.txt
 python build_patch.py --vita "D:\path\content.psarc" --switch "D:\path\romfs"
 ```
 
-출력 경로: `dist/v0.9.1/rePatch/PCSG01154/content.psarc`
+출력 경로: `dist/v0.9.1/rePatch/PCSG01154/content.psarc`. 변환된 변경 파일 묶음 `dist/v0.9.1/patch_sources_v0.9.1.tar`도 생성됩니다.
 
 ## 제작 및 출처
 
